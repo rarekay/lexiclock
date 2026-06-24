@@ -818,3 +818,47 @@ html, body {
   background: var(--surface2);
   border: 1px solid var(--amber);
 }
+
+/* ── Timer empty state ── */
+.timer-empty {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+  text-align: center;
+  gap: 12px;
+}
+.timer-empty i {
+  font-size: 52px;
+  color: var(--border);
+  margin-bottom: 8px;
+}
+.timer-empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--cream);
+}
+.timer-empty-body {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.timer-empty-btn {
+  margin-top: 16px;
+  padding: 13px 28px;
+  background: var(--amber);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  color: var(--bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.15s;
+}
+.timer-empty-btn:active { opacity: 0.85; }

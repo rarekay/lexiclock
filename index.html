@@ -148,7 +148,18 @@
       <i class="ti ti-clock-pause" aria-hidden="true"></i>
       Clock paused during challenge
     </div>
-    <div class="timer-body">
+
+    <!-- Empty state — shown when no game is active -->
+    <div class="timer-empty" id="timer-empty">
+      <i class="ti ti-clock-off" aria-hidden="true"></i>
+      <div class="timer-empty-title">No game in progress</div>
+      <div class="timer-empty-body">Set up a new game to get started</div>
+      <button class="timer-empty-btn" onclick="goTo('setup')">
+        <i class="ti ti-layout-grid" aria-hidden="true"></i> Set up a game
+      </button>
+    </div>
+
+    <div class="timer-body" id="timer-body">
       <div class="player-tile inactive" id="tile-p1" onclick="switchTurn(0)">
         <div class="p-name" id="display-name-p1">PLAYER 1</div>
         <div class="p-time" id="time-p1">1:00</div>
@@ -164,7 +175,7 @@
         <div class="timesup-badge" id="p2-timesup">TIME'S UP</div>
       </div>
     </div>
-    <div class="timer-controls">
+    <div class="timer-controls" id="timer-controls">
       <button class="ctrl-btn" onclick="togglePause()">
         <i id="pause-icon" class="ti ti-player-pause" aria-hidden="true"></i>
         <span id="pause-label">Pause</span>

@@ -140,6 +140,10 @@ function goTo(screen, opts = {}) {
   document.getElementById(`nav-${screen}`).classList.add('active');
 
   if (screen === 'timer') {
+    const isEmpty = !state.started;
+    document.getElementById('timer-empty').style.display = isEmpty ? 'flex' : 'none';
+    document.getElementById('timer-body').style.display = isEmpty ? 'none' : 'flex';
+    document.getElementById('timer-controls').style.display = isEmpty ? 'none' : 'flex';
     if (opts.fromChallenge) {
       state.fromChallenge = true;
       document.getElementById('challenge-banner').classList.add('visible');
@@ -338,7 +342,9 @@ function updateTimerUI() {
     if (!state.started) {
       tiles[i].classList.add('inactive');
     } else if (state.waitingForFirstTap) {
-      tiles[i].classList.add(i === state.currentPlayer ? 'waiting' : 'inactive');
+      // Player 2 (idx 1) taps to start Player 1's clock
+      const starterIdx = state.currentPlayer === 0 ? 1 : 0;
+      tiles[i].classList.add(i === starterIdx ? 'waiting' : 'inactive');
     } else if (isNegative) {
       tiles[i].classList.add('negative');
     } else if (isWarning) {
@@ -352,12 +358,16 @@ function updateTimerUI() {
     document.getElementById(i === 0 ? 'p1-timesup' : 'p2-timesup')
       .classList.toggle('visible', isTimesUp);
 
+    const starterIdx = state.currentPlayer === 0 ? 1 : 0;
     if (!state.started) {
       statusEls[i].textContent = 'Ready';
       hintEls[i].textContent = '';
-    } else if (state.waitingForFirstTap && i === state.currentPlayer) {
+    } else if (state.waitingForFirstTap && i === starterIdx) {
       statusEls[i].textContent = 'Tap to start';
-      hintEls[i].textContent = 'tap to begin';
+      hintEls[i].textContent = "tap to start their clock";
+    } else if (state.waitingForFirstTap && i !== starterIdx) {
+      statusEls[i].textContent = 'Get ready...';
+      hintEls[i].textContent = '';
     } else if (isActive) {
       statusEls[i].textContent = state.paused ? 'Paused' : 'Your turn';
       hintEls[i].textContent = state.paused ? 'tap to resume' : 'tap when done';
@@ -384,9 +394,10 @@ function updateTimerUI() {
 function switchTurn(idx) {
   if (!state.started) return;
 
-  // First tap starts the game
+  // Player 2 taps to start Player 1's clock
   if (state.waitingForFirstTap) {
-    if (idx !== state.currentPlayer) return;
+    const starterIdx = state.currentPlayer === 0 ? 1 : 0;
+    if (idx !== starterIdx) return;
     state.waitingForFirstTap = false;
     startTick();
     updateTimerUI();
