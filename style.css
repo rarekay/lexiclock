@@ -867,3 +867,155 @@ html, body {
 .player-tile.flipped {
   transform: rotate(180deg);
 }
+
+/* ── Explore nav ── */
+.nav-btn.explore-nav.active { color: #34D399; }
+
+/* ── Word of the Day ── */
+.wotd-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.wotd-card:active { opacity: 0.9; }
+.wotd-word {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--amber);
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.wotd-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.wotd-pts {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--amber);
+  background: #F5A62320;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.wotd-letters { font-size: 12px; color: var(--muted); }
+.wotd-def {
+  font-size: 14px;
+  color: var(--cream);
+  line-height: 1.6;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.wotd-reveal {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  padding-top: 8px;
+}
+
+/* ── Explore grid ── */
+.explore-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.explore-card {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 16px 14px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color 0.18s;
+}
+.explore-card:active { opacity: 0.85; }
+.explore-card:hover { border-color: #34D399; }
+.explore-card i { font-size: 22px; color: #34D399; margin-bottom: 8px; display: block; }
+.explore-card-title { font-size: 13px; font-weight: 600; color: var(--cream); margin-bottom: 4px; }
+.explore-card-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+/* ── Explore back button ── */
+.explore-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 16px;
+  margin-top: 4px;
+}
+.explore-back:active { opacity: 0.7; }
+
+/* ── Anagram results ── */
+.anagram-count {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.anagram-group { margin-bottom: 16px; }
+.anagram-group-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.anagram-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.anagram-word {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--cream);
+  background: var(--surface);
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+}
+.hv-word sup {
+  font-size: 9px;
+  color: var(--amber);
+  margin-left: 2px;
+}
+.explore-empty {
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  padding: 32px 0;
+}
+
+/* ── Word list sections ── */
+.wl-section { margin-bottom: 20px; }
+.wl-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cream);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wl-count {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.wl-section-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
