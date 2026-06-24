@@ -13,6 +13,14 @@
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icons/icon.svg"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-EHTTN7BPX0"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-EHTTN7BPX0');
+  </script>
 </head>
 <body>
 <div id="app">
@@ -28,7 +36,7 @@
       <div class="ob-card">
         <i class="ti ti-hand-finger ob-icon" aria-hidden="true"></i>
         <h2 class="ob-title">Tap to pass the clock</h2>
-        <p class="ob-body">When your turn is done, tap your tile. The clock switches to your opponent instantly. Choose per-turn or total time mode.</p>
+        <p class="ob-body">When your turn is done, tap your tile to pass the clock. The first player taps to start the game.</p>
       </div>
       <div class="ob-card">
         <i class="ti ti-alert-triangle ob-icon" aria-hidden="true"></i>
@@ -47,6 +55,21 @@
     </div>
   </div>
 
+  <!-- ── Reset Modal ── -->
+  <div class="modal-overlay" id="reset-modal">
+    <div class="modal">
+      <div class="modal-title">Game over?</div>
+      <div class="modal-body">Play again with the same settings, or start fresh.</div>
+      <button class="modal-btn primary" onclick="playAgain()">
+        <i class="ti ti-refresh" aria-hidden="true"></i> Play again
+      </button>
+      <button class="modal-btn secondary" onclick="newGame()">
+        <i class="ti ti-layout-grid" aria-hidden="true"></i> New game
+      </button>
+      <button class="modal-btn ghost" onclick="closeResetModal()">Cancel</button>
+    </div>
+  </div>
+
   <!-- ── Setup Screen ── -->
   <div class="screen active" id="screen-setup">
     <div class="lc-header">
@@ -54,7 +77,6 @@
       <div class="lc-header-tag">2 players</div>
     </div>
     <div class="screen-body">
-
       <div class="sec-label mt8">Player names (optional)</div>
       <div class="name-row">
         <div class="name-field">
@@ -77,7 +99,7 @@
         <div class="mode-desc">Each player has a time budget for the whole game.</div>
       </div>
 
-      <div class="sec-label mt16" id="time-label">Duration</div>
+      <div class="sec-label mt16">Duration</div>
       <div class="time-row" id="turn-times">
         <button class="time-btn selected" onclick="selectTime(this, 60)">1:00</button>
         <button class="time-btn" onclick="selectTime(this, 90)">1:30</button>
@@ -106,11 +128,13 @@
       </button>
 
       <div class="donation-nudge" id="donation-nudge">
-        <div class="nudge-text"><span>Enjoying LexiClock?</span> Buy us a coffee ☕</div>
-        <button class="nudge-btn" onclick="window.open('https://ko-fi.com/lexiclock','_blank')">Support</button>
+        <div class="nudge-text"><span>Enjoying LexiClock?</span></div>
+        <div class="nudge-actions">
+          <button class="nudge-btn" onclick="window.open('https://tally.so/r/GxkP5e','_blank'); gtag('event','feedback_tapped');">⭐ Rate it</button>
+          <button class="nudge-btn amber" onclick="window.open('https://ko-fi.com/kennethoshunkeye','_blank'); gtag('event','kofi_tapped');">☕ Support us</button>
+        </div>
         <button class="nudge-close" onclick="document.getElementById('donation-nudge').classList.remove('visible')" aria-label="Dismiss">×</button>
       </div>
-
     </div>
   </div>
 
@@ -172,7 +196,7 @@
       </div>
       <div class="sec-label">Words to challenge</div>
       <input type="text" class="word-input" id="word-input" placeholder="e.g. QI, ZAX, FROE" autocomplete="off" autocorrect="off" spellcheck="false"/>
-      <div class="word-hint">Separate multiple words with a comma or space</div>
+      <div class="word-hint">Separate multiple words with a comma or space. Letters only.</div>
       <button class="check-btn" id="check-btn" onclick="checkWords()">
         <i class="ti ti-check" aria-hidden="true"></i> Check words
       </button>
@@ -188,7 +212,7 @@
       <div class="verdict-main" id="verdict-main">VALID</div>
       <div class="verdict-words" id="verdict-words"></div>
       <div class="verdict-dict" id="verdict-dict"></div>
-      <div class="verdict-invalid-list" id="verdict-invalid-list"></div>
+      <div class="verdict-invalid-list" id="verdict-invalid-list" style="display:none"></div>
       <button class="verdict-back" onclick="closeVerdict()">
         <i class="ti ti-arrow-left" aria-hidden="true"></i> Back
       </button>
@@ -202,7 +226,6 @@
       <div class="lc-header-tag">settings</div>
     </div>
     <div class="settings-body">
-
       <div class="sec-label">Preferences</div>
       <div class="setting-group">
         <div class="setting-row">
@@ -229,7 +252,14 @@
 
       <div class="sec-label">Support</div>
       <div class="setting-group">
-        <div class="setting-link" onclick="window.open('https://ko-fi.com/lexiclock','_blank')">
+        <div class="setting-link" onclick="window.open('https://tally.so/r/GxkP5e','_blank'); gtag('event','feedback_tapped');">
+          <div>
+            <div class="setting-link-label">Rate LexiClock ⭐</div>
+            <div class="setting-link-sub">Share your feedback — takes 1 minute</div>
+          </div>
+          <i class="ti ti-external-link setting-link-arrow" aria-hidden="true"></i>
+        </div>
+        <div class="setting-link" onclick="window.open('https://ko-fi.com/kennethoshunkeye','_blank'); gtag('event','kofi_tapped');">
           <div>
             <div class="setting-link-label">Support LexiClock ☕</div>
             <div class="setting-link-sub">Buy us a coffee on Ko-fi</div>
@@ -257,7 +287,6 @@
           </div>
         </div>
       </div>
-
       <div class="settings-version">Made with love for Scrabble players everywhere</div>
     </div>
   </div>

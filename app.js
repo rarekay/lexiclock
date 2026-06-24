@@ -1,14 +1,21 @@
 'use strict';
 
+// ── Analytics ─────────────────────────────────────────────────────────────────
+function trackEvent(name, params = {}) {
+  if (typeof gtag !== 'undefined') {
+    gtag('event', name, params);
+  }
+}
+
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
   mode: 'turn',
   selectedTime: 60,
-  customTimes: [0, 0],
   times: [60, 60],
   currentPlayer: 0,
   paused: false,
   started: false,
+  waitingForFirstTap: false,
   interval: null,
   fromChallenge: false,
   nudgeShown: false,
@@ -136,34 +143,77 @@ function goTo(screen, opts = {}) {
     if (opts.fromChallenge) {
       state.fromChallenge = true;
       document.getElementById('challenge-banner').classList.add('visible');
-    } else {
+    } else if (!opts.keepChallengeBanner) {
       state.fromChallenge = false;
       document.getElementById('challenge-banner').classList.remove('visible');
     }
-    if (state.started && !state.paused) startTick();
+    if (state.started && !state.paused && !state.waitingForFirstTap) startTick();
     updateTimerUI();
   } else {
     clearInterval(state.interval);
   }
 
   if (screen === 'challenge') {
-    document.getElementById('challenge-header-sub').textContent =
-      state.fromChallenge || opts.pausing ? 'clock paused' : 'word challenge';
     const banner = document.getElementById('challenge-paused-banner');
     if (opts.pausing || state.fromChallenge) {
       banner.classList.add('visible');
+      document.getElementById('challenge-header-sub').textContent = 'clock paused';
     } else {
       banner.classList.remove('visible');
+      document.getElementById('challenge-header-sub').textContent = 'word challenge';
     }
     const dictKey = state.activeDict === 'csw' ? 'csw' : 'nwl';
     loadWordList(dictKey).catch(() => {});
   }
+}
 
-  if (screen === 'setup' && opts.afterReset && !state.nudgeShown) {
+// ── Reset Modal ───────────────────────────────────────────────────────────────
+function resetGame() {
+  clearInterval(state.interval);
+  document.getElementById('reset-modal').classList.add('visible');
+}
+
+function closeResetModal() {
+  document.getElementById('reset-modal').classList.remove('visible');
+}
+
+function playAgain() {
+  closeResetModal();
+  state.times = [state.selectedTime, state.selectedTime];
+  if (state.mode === 'total') {
+    state.times = getPlayerTimes();
+  }
+  state.currentPlayer = 0;
+  state.paused = false;
+  state.started = true;
+  state.waitingForFirstTap = true;
+  state.fromChallenge = false;
+  document.getElementById('challenge-banner').classList.remove('visible');
+  document.getElementById('p1-timesup').classList.remove('visible');
+  document.getElementById('p2-timesup').classList.remove('visible');
+  updateTimerUI();
+  goTo('timer');
+  trackEvent('game_started', { mode: state.mode, type: 'rematch' });
+}
+
+function newGame() {
+  closeResetModal();
+  clearInterval(state.interval);
+  state.started = false;
+  state.paused = false;
+  state.waitingForFirstTap = false;
+  state.fromChallenge = false;
+  document.getElementById('challenge-banner').classList.remove('visible');
+  document.getElementById('challenge-paused-banner').classList.remove('visible');
+  // Clear player names
+  document.querySelectorAll('.name-input').forEach(i => i.value = '');
+  goTo('setup');
+  // Show nudge once per session
+  if (!state.nudgeShown) {
     setTimeout(() => {
       document.getElementById('donation-nudge').classList.add('visible');
       state.nudgeShown = true;
-    }, 600);
+    }, 700);
   }
 }
 
@@ -197,6 +247,10 @@ function selectTime(el, t) {
   }
 }
 
+function clearPresetSelection() {
+  document.querySelectorAll('#total-presets .time-btn').forEach(b => b.classList.remove('selected'));
+}
+
 function getPlayerTimes() {
   if (state.mode === 'turn') return [state.selectedTime, state.selectedTime];
   const p1val = document.querySelector('#custom-p1').value.trim();
@@ -205,7 +259,7 @@ function getPlayerTimes() {
     if (!v) return state.selectedTime;
     if (v.includes(':')) {
       const [m, s] = v.split(':');
-      return parseInt(m) * 60 + parseInt(s || 0);
+      return parseInt(m) * 60 + (parseInt(s) || 0);
     }
     return parseInt(v) * 60;
   }
@@ -217,13 +271,14 @@ function startGame() {
   state.currentPlayer = 0;
   state.paused = false;
   state.started = true;
+  state.waitingForFirstTap = true;
   state.nudgeShown = false;
   document.getElementById('donation-nudge').classList.remove('visible');
   document.getElementById('p1-timesup').classList.remove('visible');
   document.getElementById('p2-timesup').classList.remove('visible');
   updateTimerUI();
   goTo('timer');
-  startTick();
+  trackEvent('game_started', { mode: state.mode, type: 'new' });
 }
 
 // ── Timer ────────────────────────────────────────────────────────────────────
@@ -233,62 +288,40 @@ function startTick() {
 }
 
 function tick() {
-  if (state.paused) return;
+  if (state.paused || state.waitingForFirstTap) return;
   const idx = state.currentPlayer;
 
   if (state.mode === 'turn') {
     state.times[idx]--;
     if (state.times[idx] === 60) {
-      playTick(660, 0.08, 0.35);
-      vibrate(100);
+      playTick(660, 0.08, 0.35); vibrate(100);
     } else if (state.times[idx] <= 5 && state.times[idx] > 0) {
-      playTick(880 + (5 - state.times[idx]) * 40, 0.06, 0.3);
-      vibrate(50);
+      playTick(880 + (5 - state.times[idx]) * 40, 0.06, 0.3); vibrate(50);
     } else if (state.times[idx] === 0) {
-      playEndSound();
-      vibrate([100, 80, 100]);
+      playEndSound(); vibrate([100, 80, 100]);
       clearInterval(state.interval);
     }
   } else {
     state.times[idx]--;
     if (state.times[idx] === 60) {
-      playTick(660, 0.08, 0.35);
-      vibrate(100);
+      playTick(660, 0.08, 0.35); vibrate(100);
     } else if (state.times[idx] <= 5 && state.times[idx] > 0) {
-      playTick(880 + (5 - state.times[idx]) * 40, 0.06, 0.3);
-      vibrate(50);
+      playTick(880 + (5 - state.times[idx]) * 40, 0.06, 0.3); vibrate(50);
     } else if (state.times[idx] === 0) {
-      playEndSound();
-      vibrate([100, 80, 100]);
+      playEndSound(); vibrate([100, 80, 100]);
     } else if (state.times[idx] === -1) {
       playNegativeSound();
     }
   }
-
   updateTimerUI();
 }
 
 function updateTimerUI() {
-  const tiles = [
-    document.getElementById('tile-p1'),
-    document.getElementById('tile-p2')
-  ];
-  const timeEls = [
-    document.getElementById('time-p1'),
-    document.getElementById('time-p2')
-  ];
-  const statusEls = [
-    document.getElementById('status-p1'),
-    document.getElementById('status-p2')
-  ];
-  const hintEls = [
-    document.getElementById('hint-p1'),
-    document.getElementById('hint-p2')
-  ];
-  const nameEls = [
-    document.getElementById('display-name-p1'),
-    document.getElementById('display-name-p2')
-  ];
+  const tiles = [document.getElementById('tile-p1'), document.getElementById('tile-p2')];
+  const timeEls = [document.getElementById('time-p1'), document.getElementById('time-p2')];
+  const statusEls = [document.getElementById('status-p1'), document.getElementById('status-p2')];
+  const hintEls = [document.getElementById('hint-p1'), document.getElementById('hint-p2')];
+  const nameEls = [document.getElementById('display-name-p1'), document.getElementById('display-name-p2')];
 
   nameEls[0].textContent = playerName(0).toUpperCase();
   nameEls[1].textContent = playerName(1).toUpperCase();
@@ -304,6 +337,8 @@ function updateTimerUI() {
     tiles[i].className = 'player-tile';
     if (!state.started) {
       tiles[i].classList.add('inactive');
+    } else if (state.waitingForFirstTap) {
+      tiles[i].classList.add(i === state.currentPlayer ? 'waiting' : 'inactive');
     } else if (isNegative) {
       tiles[i].classList.add('negative');
     } else if (isWarning) {
@@ -320,9 +355,12 @@ function updateTimerUI() {
     if (!state.started) {
       statusEls[i].textContent = 'Ready';
       hintEls[i].textContent = '';
+    } else if (state.waitingForFirstTap && i === state.currentPlayer) {
+      statusEls[i].textContent = 'Tap to start';
+      hintEls[i].textContent = 'tap to begin';
     } else if (isActive) {
       statusEls[i].textContent = state.paused ? 'Paused' : 'Your turn';
-      hintEls[i].textContent = state.paused ? '' : 'tap when done';
+      hintEls[i].textContent = state.paused ? 'tap to resume' : 'tap when done';
     } else {
       statusEls[i].textContent = 'Waiting';
       hintEls[i].textContent = '';
@@ -344,9 +382,29 @@ function updateTimerUI() {
 }
 
 function switchTurn(idx) {
-  if (!state.started || state.paused) return;
+  if (!state.started) return;
+
+  // First tap starts the game
+  if (state.waitingForFirstTap) {
+    if (idx !== state.currentPlayer) return;
+    state.waitingForFirstTap = false;
+    startTick();
+    updateTimerUI();
+    return;
+  }
+
+  // Paused — tap to resume
+  if (state.paused) {
+    if (idx !== state.currentPlayer) return;
+    state.paused = false;
+    startTick();
+    updateTimerUI();
+    return;
+  }
+
   if (idx !== state.currentPlayer) return;
   if (state.mode === 'turn' && state.times[idx] <= 0) return;
+
   playTick(440, 0.05, 0.2);
   vibrate(60);
   if (state.mode === 'turn') state.times[idx] = state.selectedTime;
@@ -356,14 +414,14 @@ function switchTurn(idx) {
 }
 
 function togglePause() {
-  if (!state.started) return;
+  if (!state.started || state.waitingForFirstTap) return;
   state.paused = !state.paused;
   if (!state.paused) startTick();
   updateTimerUI();
 }
 
 function triggerChallenge() {
-  if (state.started && !state.paused) {
+  if (state.started && !state.paused && !state.waitingForFirstTap) {
     state.paused = true;
     updateTimerUI();
   }
@@ -371,16 +429,7 @@ function triggerChallenge() {
   document.getElementById('word-input').value = '';
   document.getElementById('verdict-screen').classList.remove('visible');
   goTo('challenge', { pausing: true });
-}
-
-function resetGame() {
-  clearInterval(state.interval);
-  state.started = false;
-  state.paused = false;
-  state.fromChallenge = false;
-  document.getElementById('challenge-banner').classList.remove('visible');
-  document.getElementById('challenge-paused-banner').classList.remove('visible');
-  goTo('setup', { afterReset: true });
+  trackEvent('challenge_triggered', { dict: state.activeDict });
 }
 
 // ── Word Checking ─────────────────────────────────────────────────────────────
@@ -418,23 +467,15 @@ async function checkWords() {
 
     document.getElementById('verdict-icon').className =
       'verdict-icon ti ' + (allValid ? 'ti-circle-check' : 'ti-circle-x');
-
     document.getElementById('verdict-line1').textContent =
       allValid ? 'Yes, the play is' : 'No, the play is';
-
     document.getElementById('verdict-main').textContent =
       allValid ? 'VALID' : 'NOT VALID';
-
     document.getElementById('verdict-words').textContent = words.join(', ');
     document.getElementById('verdict-dict').textContent = `Lexicon: ${dictLabel}`;
+    document.getElementById('verdict-invalid-list').style.display = 'none';
 
-    const invList = document.getElementById('verdict-invalid-list');
-    if (!allValid) {
-      invList.textContent = `Invalid: ${invalid.join(', ')}`;
-      invList.style.display = 'block';
-    } else {
-      invList.style.display = 'none';
-    }
+    trackEvent('word_checked', { dict: dictLabel, valid: allValid, word_count: words.length });
 
   } catch (e) {
     alert('Could not load word list. Please check your connection.');
@@ -446,10 +487,12 @@ async function checkWords() {
 
 function closeVerdict() {
   document.getElementById('verdict-screen').classList.remove('visible');
+  document.getElementById('word-input').value = '';
   if (state.fromChallenge) {
     state.fromChallenge = false;
     document.getElementById('challenge-paused-banner').classList.remove('visible');
-    goTo('timer', { fromChallenge: false });
+    document.getElementById('challenge-header-sub').textContent = 'word challenge';
+    goTo('timer');
   }
 }
 
@@ -486,14 +529,9 @@ function initOnboarding() {
   }
 
   nextBtn.addEventListener('click', () => {
-    if (card < cards.length - 1) {
-      card++;
-      showCard(card);
-    } else {
-      dismissOnboarding();
-    }
+    if (card < cards.length - 1) { card++; showCard(card); }
+    else dismissOnboarding();
   });
-
   document.getElementById('ob-skip').addEventListener('click', dismissOnboarding);
   showCard(0);
 }
@@ -518,25 +556,24 @@ document.addEventListener('DOMContentLoaded', () => {
   registerSW();
   updateTimerUI();
 
-  // Unlock audio context on first tap
-  document.addEventListener('touchstart', () => {
-    if (!audioCtx) getAudio();
-  }, { once: true });
-  document.addEventListener('click', () => {
-    if (!audioCtx) getAudio();
-  }, { once: true });
+  document.addEventListener('touchstart', () => { if (!audioCtx) getAudio(); }, { once: true });
+  document.addEventListener('click', () => { if (!audioCtx) getAudio(); }, { once: true });
 
-  // Word input enter key
   document.getElementById('word-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') checkWords();
   });
 
-  // Word input auto-uppercase
+  // Auto uppercase + block special characters (allow letters, space, comma only)
   document.getElementById('word-input').addEventListener('input', e => {
     const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
+    const clean = e.target.value.toUpperCase().replace(/[^A-Z\s,]/g, '');
+    e.target.value = clean;
     e.target.setSelectionRange(pos, pos);
   });
+
+  // Clear preset selection when custom time is typed
+  document.getElementById('custom-p1').addEventListener('input', clearPresetSelection);
+  document.getElementById('custom-p2').addEventListener('input', clearPresetSelection);
 
   // Preload default word list
   const dictKey = state.settings.dict === 'csw' ? 'csw' : 'nwl';
