@@ -862,3 +862,8 @@ html, body {
   transition: opacity 0.15s;
 }
 .timer-empty-btn:active { opacity: 0.85; }
+
+/* ── Flipped tile for Player 1 ── */
+.player-tile.flipped {
+  transform: rotate(180deg);
+}

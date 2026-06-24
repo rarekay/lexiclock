@@ -1,6 +1,32 @@
 'use strict';
 
-// ── Analytics ─────────────────────────────────────────────────────────────────
+// ── Wake Lock ─────────────────────────────────────────────────────────────────
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (e) {}
+  }
+}
+
+async function releaseWakeLock() {
+  if (wakeLock) {
+    try { await wakeLock.release(); } catch (e) {}
+    wakeLock = null;
+  }
+}
+
+// Re-acquire wake lock when page becomes visible again
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.started && !state.paused) {
+    requestWakeLock();
+  }
+});
+
+
 function trackEvent(name, params = {}) {
   if (typeof gtag !== 'undefined') {
     gtag('event', name, params);
@@ -197,12 +223,14 @@ function playAgain() {
   document.getElementById('p2-timesup').classList.remove('visible');
   updateTimerUI();
   goTo('timer');
+  requestWakeLock();
   trackEvent('game_started', { mode: state.mode, type: 'rematch' });
 }
 
 function newGame() {
   closeResetModal();
   clearInterval(state.interval);
+  releaseWakeLock();
   state.started = false;
   state.paused = false;
   state.waitingForFirstTap = false;
@@ -282,6 +310,7 @@ function startGame() {
   document.getElementById('p2-timesup').classList.remove('visible');
   updateTimerUI();
   goTo('timer');
+  requestWakeLock();
   trackEvent('game_started', { mode: state.mode, type: 'new' });
 }
 
@@ -427,7 +456,12 @@ function switchTurn(idx) {
 function togglePause() {
   if (!state.started || state.waitingForFirstTap) return;
   state.paused = !state.paused;
-  if (!state.paused) startTick();
+  if (!state.paused) {
+    startTick();
+    requestWakeLock();
+  } else {
+    releaseWakeLock();
+  }
   updateTimerUI();
 }
 
