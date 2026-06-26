@@ -1,13 +1,15 @@
-const CACHE = 'lexiclock-v1';
+const CACHE = 'lexiclock-v3';
 const ASSETS = [
   '/',
   '/index.html',
   '/style.css',
   '/app.js',
+  '/explore.js',
   '/manifest.json',
   '/icons/icon.svg',
   '/words/csw.txt',
-  '/words/nwl2023.txt'
+  '/words/nwl2023.txt',
+  '/words/wotd.json'
 ];
 
 self.addEventListener('install', e => {
@@ -30,4 +32,10 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
+});
+
+self.addEventListener('message', e => {
+  if (e.data && e.data.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });

@@ -1,5 +1,34 @@
 'use strict';
 
+// ── Install Prompt ────────────────────────────────────────────────────────────
+function showInstallPrompt() {
+  const isAndroid = /android/i.test(navigator.userAgent);
+  if (isAndroid) switchInstallTab('android');
+  document.getElementById('install-prompt').classList.add('visible');
+}
+function closeInstallPrompt() {
+  document.getElementById('install-prompt').classList.remove('visible');
+  localStorage.setItem('lc_install_dismissed', '1');
+}
+function switchInstallTab(tab) {
+  document.getElementById('tab-ios').classList.toggle('active', tab === 'ios');
+  document.getElementById('tab-android').classList.toggle('active', tab === 'android');
+  document.getElementById('steps-ios').style.display = tab === 'ios' ? 'flex' : 'none';
+  document.getElementById('steps-android').style.display = tab === 'android' ? 'flex' : 'none';
+}
+function checkInstallPrompt() {
+  const isInstalled = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  const dismissed = localStorage.getItem('lc_install_dismissed');
+  const shown = localStorage.getItem('lc_install_shown');
+  if (!isInstalled && !dismissed && !shown) {
+    setTimeout(() => {
+      showInstallPrompt();
+      localStorage.setItem('lc_install_shown', '1');
+    }, 90000);
+  }
+}
+
 // ── Wake Lock ─────────────────────────────────────────────────────────────────
 let wakeLock = null;
 
@@ -19,18 +48,21 @@ async function releaseWakeLock() {
   }
 }
 
+// Re-acquire wake lock when page becomes visible again
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && state.started && !state.paused) {
     requestWakeLock();
   }
 });
 
-// ── Analytics ─────────────────────────────────────────────────────────────────
+
 function trackEvent(name, params = {}) {
-  if (typeof gtag !== 'undefined') gtag('event', name, params);
+  if (typeof gtag !== 'undefined') {
+    gtag('event', name, params);
+  }
 }
 
-// ── State ─────────────────────────────────────────────────────────────────────
+// ── State ────────────────────────────────────────────────────────────────────
 const state = {
   mode: 'turn',
   selectedTime: 60,
@@ -44,28 +76,38 @@ const state = {
   nudgeShown: false,
   activeDict: 'csw',
   wordLists: { csw: null, nwl: null },
-  settings: { sound: true, vibration: true, dict: 'csw' }
+  settings: {
+    sound: true,
+    vibration: true,
+    dict: 'csw'
+  }
 };
 
-// ── Audio ─────────────────────────────────────────────────────────────────────
+// ── Audio ────────────────────────────────────────────────────────────────────
 let audioCtx = null;
+
 function getAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
 }
+
 function playTick(freq = 880, duration = 0.06, vol = 0.3) {
   if (!state.settings.sound) return;
   try {
     const ctx = getAudio();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = freq; osc.type = 'sine';
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = 'sine';
     gain.gain.setValueAtTime(vol, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
   } catch (e) {}
 }
+
 function playEndSound() {
   if (!state.settings.sound) return;
   try {
@@ -73,45 +115,64 @@ function playEndSound() {
     [0, 0.15, 0.3].forEach((delay, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = i === 2 ? 440 : 523; osc.type = 'sine';
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = i === 2 ? 440 : 523;
+      osc.type = 'sine';
       gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
-      osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.25);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.25);
     });
   } catch (e) {}
 }
+
 function playNegativeSound() {
   if (!state.settings.sound) return;
   try {
     const ctx = getAudio();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 220; osc.type = 'sawtooth';
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 220;
+    osc.type = 'sawtooth';
     gain.gain.setValueAtTime(0.2, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
   } catch (e) {}
 }
+
 function vibrate(pattern) {
   if (!state.settings.vibration) return;
   if ('vibrate' in navigator) navigator.vibrate(pattern);
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(s) {
-  const neg = s < 0; const abs = Math.abs(s);
+  const neg = s < 0;
+  const abs = Math.abs(s);
   const m = Math.floor(abs / 60);
-  return (neg ? '-' : '') + m + ':' + String(abs % 60).padStart(2, '0');
+  const sec = abs % 60;
+  return (neg ? '-' : '') + m + ':' + String(sec).padStart(2, '0');
 }
+
 function playerName(idx) {
-  const val = document.querySelectorAll('.name-input')[idx]?.value.trim();
+  const inputs = document.querySelectorAll('.name-input');
+  const val = inputs[idx]?.value.trim();
   return val || `Player ${idx + 1}`;
 }
-function saveSettings() { localStorage.setItem('lc_settings', JSON.stringify(state.settings)); }
+
+function saveSettings() {
+  localStorage.setItem('lc_settings', JSON.stringify(state.settings));
+}
+
 function loadSettings() {
-  try { const s = JSON.parse(localStorage.getItem('lc_settings')); if (s) Object.assign(state.settings, s); } catch (e) {}
+  try {
+    const s = JSON.parse(localStorage.getItem('lc_settings'));
+    if (s) Object.assign(state.settings, s);
+  } catch (e) {}
   state.activeDict = state.settings.dict;
 }
 
@@ -126,7 +187,7 @@ async function loadWordList(dict) {
   return set;
 }
 
-// ── Navigation ────────────────────────────────────────────────────────────────
+// ── Navigation ───────────────────────────────────────────────────────────────
 function goTo(screen, opts = {}) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -151,6 +212,11 @@ function goTo(screen, opts = {}) {
     clearInterval(state.interval);
   }
 
+  if (screen === 'explore') {
+    if (typeof initExplore === 'function' && !explore.wotd) initExplore();
+    else if (typeof renderWotd === 'function') renderWotd();
+  }
+
   if (screen === 'challenge') {
     const banner = document.getElementById('challenge-paused-banner');
     if (opts.pausing || state.fromChallenge) {
@@ -170,12 +236,17 @@ function resetGame() {
   clearInterval(state.interval);
   document.getElementById('reset-modal').classList.add('visible');
 }
+
 function closeResetModal() {
   document.getElementById('reset-modal').classList.remove('visible');
 }
+
 function playAgain() {
   closeResetModal();
-  state.times = getPlayerTimes();
+  state.times = [state.selectedTime, state.selectedTime];
+  if (state.mode === 'total') {
+    state.times = getPlayerTimes();
+  }
   state.currentPlayer = 0;
   state.paused = false;
   state.started = true;
@@ -189,6 +260,7 @@ function playAgain() {
   requestWakeLock();
   trackEvent('game_started', { mode: state.mode, type: 'rematch' });
 }
+
 function newGame() {
   closeResetModal();
   clearInterval(state.interval);
@@ -199,8 +271,10 @@ function newGame() {
   state.fromChallenge = false;
   document.getElementById('challenge-banner').classList.remove('visible');
   document.getElementById('challenge-paused-banner').classList.remove('visible');
+  // Clear player names
   document.querySelectorAll('.name-input').forEach(i => i.value = '');
   goTo('setup');
+  // Show nudge once per session
   if (!state.nudgeShown) {
     setTimeout(() => {
       document.getElementById('donation-nudge').classList.add('visible');
@@ -209,7 +283,7 @@ function newGame() {
   }
 }
 
-// ── Setup ─────────────────────────────────────────────────────────────────────
+// ── Setup ────────────────────────────────────────────────────────────────────
 function selectMode(m) {
   state.mode = m;
   document.getElementById('mode-turn').classList.toggle('selected', m === 'turn');
@@ -218,6 +292,7 @@ function selectMode(m) {
   document.getElementById('turn-times').classList.toggle('hidden', m !== 'turn');
   document.getElementById('total-presets').classList.toggle('hidden', m !== 'total');
   document.getElementById('custom-time-wrap').classList.toggle('visible', m === 'total');
+
   if (m === 'turn') {
     state.selectedTime = 60;
     document.querySelectorAll('#turn-times .time-btn').forEach((b, i) => b.classList.toggle('selected', i === 0));
@@ -226,8 +301,10 @@ function selectMode(m) {
     document.querySelectorAll('#total-presets .time-btn').forEach((b, i) => b.classList.toggle('selected', i === 1));
   }
 }
+
 function selectTime(el, t) {
-  el.closest('.time-row').querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+  const group = el.closest('.time-row');
+  group.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   state.selectedTime = t;
   if (state.mode === 'total') {
@@ -235,20 +312,26 @@ function selectTime(el, t) {
     document.querySelector('#custom-p2').value = '';
   }
 }
+
 function clearPresetSelection() {
   document.querySelectorAll('#total-presets .time-btn').forEach(b => b.classList.remove('selected'));
 }
+
 function getPlayerTimes() {
   if (state.mode === 'turn') return [state.selectedTime, state.selectedTime];
   const p1val = document.querySelector('#custom-p1').value.trim();
   const p2val = document.querySelector('#custom-p2').value.trim();
   function parseTime(v) {
     if (!v) return state.selectedTime;
-    if (v.includes(':')) { const [m, s] = v.split(':'); return parseInt(m) * 60 + (parseInt(s) || 0); }
+    if (v.includes(':')) {
+      const [m, s] = v.split(':');
+      return parseInt(m) * 60 + (parseInt(s) || 0);
+    }
     return parseInt(v) * 60;
   }
   return [parseTime(p1val), parseTime(p2val)];
 }
+
 function startGame() {
   state.times = getPlayerTimes();
   state.currentPlayer = 0;
@@ -265,22 +348,37 @@ function startGame() {
   trackEvent('game_started', { mode: state.mode, type: 'new' });
 }
 
-// ── Timer ─────────────────────────────────────────────────────────────────────
-function startTick() { clearInterval(state.interval); state.interval = setInterval(tick, 1000); }
+// ── Timer ────────────────────────────────────────────────────────────────────
+function startTick() {
+  clearInterval(state.interval);
+  state.interval = setInterval(tick, 1000);
+}
+
 function tick() {
   if (state.paused || state.waitingForFirstTap) return;
   const idx = state.currentPlayer;
+
   if (state.mode === 'turn') {
     state.times[idx]--;
-    if (state.times[idx] === 60) { playTick(660, 0.08, 0.35); vibrate(100); }
-    else if (state.times[idx] <= 5 && state.times[idx] > 0) { playTick(880 + (5 - state.times[idx]) * 40, 0.06, 0.3); vibrate(50); }
-    else if (state.times[idx] === 0) { playEndSound(); vibrate([100, 80, 100]); clearInterval(state.interval); }
+    if (state.times[idx] === 60) {
+      playTick(660, 0.08, 0.35); vibrate(100);
+    } else if (state.times[idx] <= 5 && state.times[idx] > 0) {
+      playTick(880 + (5 - state.times[idx]) * 40, 0.06, 0.3); vibrate(50);
+    } else if (state.times[idx] === 0) {
+      playEndSound(); vibrate([100, 80, 100]);
+      clearInterval(state.interval);
+    }
   } else {
     state.times[idx]--;
-    if (state.times[idx] === 60) { playTick(660, 0.08, 0.35); vibrate(100); }
-    else if (state.times[idx] <= 5 && state.times[idx] > 0) { playTick(880 + (5 - state.times[idx]) * 40, 0.06, 0.3); vibrate(50); }
-    else if (state.times[idx] === 0) { playEndSound(); vibrate([100, 80, 100]); }
-    else if (state.times[idx] === -1) { playNegativeSound(); }
+    if (state.times[idx] === 60) {
+      playTick(660, 0.08, 0.35); vibrate(100);
+    } else if (state.times[idx] <= 5 && state.times[idx] > 0) {
+      playTick(880 + (5 - state.times[idx]) * 40, 0.06, 0.3); vibrate(50);
+    } else if (state.times[idx] === 0) {
+      playEndSound(); vibrate([100, 80, 100]);
+    } else if (state.times[idx] === -1) {
+      playNegativeSound();
+    }
   }
   updateTimerUI();
 }
@@ -295,8 +393,6 @@ function updateTimerUI() {
   nameEls[0].textContent = playerName(0).toUpperCase();
   nameEls[1].textContent = playerName(1).toUpperCase();
 
-  const starterIdx = state.currentPlayer === 0 ? 1 : 0;
-
   [0, 1].forEach(i => {
     const t = state.times[i];
     timeEls[i].textContent = fmt(t);
@@ -305,60 +401,109 @@ function updateTimerUI() {
     const isNegative = t < 0;
     const isTimesUp = state.mode === 'turn' && t <= 0 && isActive;
 
-    tiles[i].className = 'player-tile' + (i === 0 ? ' flipped' : '');
-    if (!state.started) tiles[i].classList.add('inactive');
-    else if (state.waitingForFirstTap) tiles[i].classList.add(i === starterIdx ? 'waiting' : 'inactive');
-    else if (isNegative) tiles[i].classList.add('negative');
-    else if (isWarning) tiles[i].classList.add('warning');
-    else if (isActive) tiles[i].classList.add('active');
-    else tiles[i].classList.add('inactive');
+    tiles[i].className = 'player-tile';
+    if (!state.started) {
+      tiles[i].classList.add('inactive');
+    } else if (state.waitingForFirstTap) {
+      // Player 2 (idx 1) taps to start Player 1's clock
+      const starterIdx = state.currentPlayer === 0 ? 1 : 0;
+      tiles[i].classList.add(i === starterIdx ? 'waiting' : 'inactive');
+    } else if (isNegative) {
+      tiles[i].classList.add('negative');
+    } else if (isWarning) {
+      tiles[i].classList.add('warning');
+    } else if (isActive) {
+      tiles[i].classList.add('active');
+    } else {
+      tiles[i].classList.add('inactive');
+    }
 
-    document.getElementById(i === 0 ? 'p1-timesup' : 'p2-timesup').classList.toggle('visible', isTimesUp);
+    document.getElementById(i === 0 ? 'p1-timesup' : 'p2-timesup')
+      .classList.toggle('visible', isTimesUp);
 
-    if (!state.started) { statusEls[i].textContent = 'Ready'; hintEls[i].textContent = ''; }
-    else if (state.waitingForFirstTap && i === starterIdx) { statusEls[i].textContent = 'Tap to start'; hintEls[i].textContent = "tap to start their clock"; }
-    else if (state.waitingForFirstTap && i !== starterIdx) { statusEls[i].textContent = 'Get ready...'; hintEls[i].textContent = ''; }
-    else if (isActive) { statusEls[i].textContent = state.paused ? 'Paused' : 'Your turn'; hintEls[i].textContent = state.paused ? 'tap to resume' : 'tap when done'; }
-    else { statusEls[i].textContent = 'Waiting'; hintEls[i].textContent = ''; }
+    const starterIdx = state.currentPlayer === 0 ? 1 : 0;
+    if (!state.started) {
+      statusEls[i].textContent = 'Ready';
+      hintEls[i].textContent = '';
+    } else if (state.waitingForFirstTap && i === starterIdx) {
+      statusEls[i].textContent = 'Tap to start';
+      hintEls[i].textContent = "tap to start their clock";
+    } else if (state.waitingForFirstTap && i !== starterIdx) {
+      statusEls[i].textContent = 'Get ready...';
+      hintEls[i].textContent = '';
+    } else if (isActive) {
+      statusEls[i].textContent = state.paused ? 'Paused' : 'Your turn';
+      hintEls[i].textContent = state.paused ? 'tap to resume' : 'tap when done';
+    } else {
+      statusEls[i].textContent = 'Waiting';
+      hintEls[i].textContent = '';
+    }
   });
 
-  document.getElementById('timer-mode-tag').textContent = state.mode === 'turn' ? 'per turn' : 'total time';
+  document.getElementById('timer-mode-tag').textContent =
+    state.mode === 'turn' ? 'per turn' : 'total time';
+
   const pauseIcon = document.getElementById('pause-icon');
   const pauseLabel = document.getElementById('pause-label');
-  if (state.paused) { pauseIcon.className = 'ti ti-player-play'; pauseLabel.textContent = 'Resume'; }
-  else { pauseIcon.className = 'ti ti-player-pause'; pauseLabel.textContent = 'Pause'; }
+  if (state.paused) {
+    pauseIcon.className = 'ti ti-player-play';
+    pauseLabel.textContent = 'Resume';
+  } else {
+    pauseIcon.className = 'ti ti-player-pause';
+    pauseLabel.textContent = 'Pause';
+  }
 }
 
 function switchTurn(idx) {
   if (!state.started) return;
-  const starterIdx = state.currentPlayer === 0 ? 1 : 0;
+
+  // Player 2 taps to start Player 1's clock
   if (state.waitingForFirstTap) {
+    const starterIdx = state.currentPlayer === 0 ? 1 : 0;
     if (idx !== starterIdx) return;
     state.waitingForFirstTap = false;
-    startTick(); updateTimerUI(); return;
+    startTick();
+    updateTimerUI();
+    return;
   }
+
+  // Paused — tap to resume
   if (state.paused) {
     if (idx !== state.currentPlayer) return;
-    state.paused = false; startTick(); updateTimerUI(); return;
+    state.paused = false;
+    startTick();
+    updateTimerUI();
+    return;
   }
+
   if (idx !== state.currentPlayer) return;
   if (state.mode === 'turn' && state.times[idx] <= 0) return;
-  playTick(440, 0.05, 0.2); vibrate(60);
+
+  playTick(440, 0.05, 0.2);
+  vibrate(60);
   if (state.mode === 'turn') state.times[idx] = state.selectedTime;
   state.currentPlayer = idx === 0 ? 1 : 0;
-  updateTimerUI(); startTick();
+  updateTimerUI();
+  startTick();
 }
 
 function togglePause() {
   if (!state.started || state.waitingForFirstTap) return;
   state.paused = !state.paused;
-  if (!state.paused) { startTick(); requestWakeLock(); }
-  else { releaseWakeLock(); }
+  if (!state.paused) {
+    startTick();
+    requestWakeLock();
+  } else {
+    releaseWakeLock();
+  }
   updateTimerUI();
 }
 
 function triggerChallenge() {
-  if (state.started && !state.paused && !state.waitingForFirstTap) { state.paused = true; updateTimerUI(); }
+  if (state.started && !state.paused && !state.waitingForFirstTap) {
+    state.paused = true;
+    updateTimerUI();
+  }
   state.fromChallenge = true;
   document.getElementById('word-input').value = '';
   document.getElementById('verdict-screen').classList.remove('visible');
@@ -373,33 +518,48 @@ function selectDict(d) {
   document.getElementById('dict-nwl').classList.toggle('selected', d === 'nwl');
   document.getElementById('verdict-screen').classList.remove('visible');
   document.getElementById('word-input').value = '';
-  loadWordList(d === 'csw' ? 'csw' : 'nwl').catch(() => {});
+  const dictKey = d === 'csw' ? 'csw' : 'nwl';
+  loadWordList(dictKey).catch(() => {});
 }
 
 async function checkWords() {
   const raw = document.getElementById('word-input').value.trim();
   if (!raw) return;
+
   const words = raw.split(/[\s,]+/).map(w => w.trim().toUpperCase()).filter(Boolean);
   if (!words.length) return;
+
   document.getElementById('check-btn').disabled = true;
   document.getElementById('loading-dots').classList.add('visible');
   document.getElementById('verdict-screen').classList.remove('visible');
+
   try {
     const dictKey = state.activeDict === 'csw' ? 'csw' : 'nwl';
     const wordSet = await loadWordList(dictKey);
     const dictLabel = state.activeDict === 'csw' ? 'Collins (CSW)' : 'NWL2023';
+
     const invalid = words.filter(w => !wordSet.has(w));
     const allValid = invalid.length === 0;
+
     const vs = document.getElementById('verdict-screen');
     vs.className = 'verdict-screen visible ' + (allValid ? 'valid' : 'invalid');
-    document.getElementById('verdict-icon').className = 'verdict-icon ti ' + (allValid ? 'ti-circle-check' : 'ti-circle-x');
-    document.getElementById('verdict-line1').textContent = allValid ? 'Yes, the play is' : 'No, the play is';
-    document.getElementById('verdict-main').textContent = allValid ? 'VALID' : 'NOT VALID';
+
+    document.getElementById('verdict-icon').className =
+      'verdict-icon ti ' + (allValid ? 'ti-circle-check' : 'ti-circle-x');
+    document.getElementById('verdict-line1').textContent =
+      allValid ? 'Yes, the play is' : 'No, the play is';
+    document.getElementById('verdict-main').textContent =
+      allValid ? 'VALID' : 'NOT VALID';
     document.getElementById('verdict-words').textContent = words.join(', ');
     document.getElementById('verdict-dict').textContent = `Lexicon: ${dictLabel}`;
     document.getElementById('verdict-invalid-list').style.display = 'none';
+
     trackEvent('word_checked', { dict: dictLabel, valid: allValid, word_count: words.length });
-  } catch (e) { alert('Could not load word list. Please check your connection.'); }
+
+  } catch (e) {
+    alert('Could not load word list. Please check your connection.');
+  }
+
   document.getElementById('loading-dots').classList.remove('visible');
   document.getElementById('check-btn').disabled = false;
 }
@@ -419,44 +579,114 @@ function closeVerdict() {
 function initSettings() {
   document.getElementById('toggle-sound').checked = state.settings.sound;
   document.getElementById('toggle-vibration').checked = state.settings.vibration;
-  document.getElementById('toggle-sound').addEventListener('change', e => { state.settings.sound = e.target.checked; saveSettings(); });
-  document.getElementById('toggle-vibration').addEventListener('change', e => { state.settings.vibration = e.target.checked; saveSettings(); });
+
+  document.getElementById('toggle-sound').addEventListener('change', e => {
+    state.settings.sound = e.target.checked;
+    saveSettings();
+  });
+  document.getElementById('toggle-vibration').addEventListener('change', e => {
+    state.settings.vibration = e.target.checked;
+    saveSettings();
+  });
 }
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
 function initOnboarding() {
-  if (localStorage.getItem('lc_onboarded')) { document.getElementById('onboarding').classList.add('hidden'); return; }
+  if (localStorage.getItem('lc_onboarded')) {
+    document.getElementById('onboarding').classList.add('hidden');
+    return;
+  }
   let card = 0;
   const cards = document.querySelectorAll('.ob-card');
   const dots = document.querySelectorAll('.ob-dot');
   const nextBtn = document.getElementById('ob-next');
+
   function showCard(n) {
     cards.forEach((c, i) => c.classList.toggle('active', i === n));
     dots.forEach((d, i) => d.classList.toggle('active', i === n));
     nextBtn.textContent = n === cards.length - 1 ? "Let's play" : 'Next';
   }
-  nextBtn.addEventListener('click', () => { if (card < cards.length - 1) { card++; showCard(card); } else dismissOnboarding(); });
+
+  nextBtn.addEventListener('click', () => {
+    if (card < cards.length - 1) { card++; showCard(card); }
+    else dismissOnboarding();
+  });
   document.getElementById('ob-skip').addEventListener('click', dismissOnboarding);
   showCard(0);
 }
-function dismissOnboarding() { localStorage.setItem('lc_onboarded', '1'); document.getElementById('onboarding').classList.add('hidden'); }
 
-// ── Service Worker ────────────────────────────────────────────────────────────
-function registerSW() { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {}); }
+function dismissOnboarding() {
+  localStorage.setItem('lc_onboarded', '1');
+  document.getElementById('onboarding').classList.add('hidden');
+}
+
+// ── Update Detection ──────────────────────────────────────────────────────────
+let newWorker = null;
+
+function applyUpdate() {
+  if (newWorker) {
+    newWorker.postMessage({ action: 'skipWaiting' });
+  } else {
+    window.location.reload();
+  }
+}
+
+function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('/sw.js').then(reg => {
+    // Check for waiting worker on load
+    if (reg.waiting) {
+      newWorker = reg.waiting;
+      document.getElementById('update-banner').classList.add('visible');
+    }
+    // Check when a new worker is installing
+    reg.addEventListener('updatefound', () => {
+      const installing = reg.installing;
+      installing.addEventListener('statechange', () => {
+        if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+          newWorker = installing;
+          document.getElementById('update-banner').classList.add('visible');
+        }
+      });
+    });
+  }).catch(() => {});
+
+  // When new SW takes control, reload to get fresh content
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  loadSettings(); initSettings(); initOnboarding(); registerSW(); updateTimerUI();
+  loadSettings();
+  initSettings();
+  initOnboarding();
+  initExplore();
+  registerSW();
+  updateTimerUI();
+  checkInstallPrompt();
+
   document.addEventListener('touchstart', () => { if (!audioCtx) getAudio(); }, { once: true });
   document.addEventListener('click', () => { if (!audioCtx) getAudio(); }, { once: true });
-  document.getElementById('word-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkWords(); });
+
+  document.getElementById('word-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') checkWords();
+  });
+
+  // Auto uppercase + block special characters (allow letters, space, comma only)
   document.getElementById('word-input').addEventListener('input', e => {
     const pos = e.target.selectionStart;
     const clean = e.target.value.toUpperCase().replace(/[^A-Z\s,]/g, '');
-    e.target.value = clean; e.target.setSelectionRange(pos, pos);
+    e.target.value = clean;
+    e.target.setSelectionRange(pos, pos);
   });
+
+  // Clear preset selection when custom time is typed
   document.getElementById('custom-p1').addEventListener('input', clearPresetSelection);
   document.getElementById('custom-p2').addEventListener('input', clearPresetSelection);
+
+  // Preload default word list
   const dictKey = state.settings.dict === 'csw' ? 'csw' : 'nwl';
   loadWordList(dictKey).catch(() => {});
 });
