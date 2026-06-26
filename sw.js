@@ -1,15 +1,13 @@
-const CACHE = 'lexiclock-v3';
+const CACHE = 'lexiclock-v1.1';
 const ASSETS = [
   '/',
   '/index.html',
   '/style.css',
   '/app.js',
-  '/explore.js',
   '/manifest.json',
   '/icons/icon.svg',
   '/words/csw.txt',
-  '/words/nwl2023.txt',
-  '/words/wotd.json'
+  '/words/nwl2023.txt'
 ];
 
 self.addEventListener('install', e => {
