@@ -28,15 +28,14 @@ function switchInstallTab(tab) {
   document.getElementById('steps-android').style.display = tab === 'android' ? 'flex' : 'none';
 }
 function checkInstallPrompt() {
+  // Only auto-show if not installed and never dismissed
+  // Removed auto-timer — too intrusive. User can access via Settings.
   const isInstalled = window.matchMedia('(display-mode: standalone)').matches
     || window.navigator.standalone === true;
-  const dismissed = localStorage.getItem('lc_install_dismissed');
-  const shown = localStorage.getItem('lc_install_shown');
-  if (!isInstalled && !dismissed && !shown) {
-    setTimeout(() => {
-      showInstallPrompt();
-      localStorage.setItem('lc_install_shown', '1');
-    }, 90000);
+  if (isInstalled) {
+    // Hide the install option in settings if already installed
+    const installSetting = document.querySelector('.install-link');
+    if (installSetting) installSetting.style.display = 'none';
   }
 }
 
