@@ -1,4 +1,4 @@
-const CACHE = 'lexiclock-v8';
+const CACHE = 'lexiclock-v9';
 const ASSETS = [
   '/','/index.html','/style.css','/app.js','/explore.js','/train.js',
   '/manifest.json','/icons/icon.svg',
@@ -28,9 +28,27 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
-  );
+  const url = new URL(e.request.url);
+  const isHTML = e.request.destination === 'document' ||
+    url.pathname === '/' || url.pathname.endsWith('.html');
+
+  if (isHTML) {
+    // Network first for HTML — always try to get fresh HTML
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+  } else {
+    // Cache first for everything else
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request))
+    );
+  }
 });
 
 // Only skip waiting when user explicitly taps Reload in the banner
