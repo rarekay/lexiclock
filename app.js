@@ -578,8 +578,6 @@ function applyTheme(light) {
 function initSettings() {
   document.getElementById('toggle-sound').checked = state.settings.sound;
   document.getElementById('toggle-vibration').checked = state.settings.vibration;
-  document.getElementById('toggle-theme').checked = state.settings.lightMode || false;
-  applyTheme(state.settings.lightMode || false);
 
   document.getElementById('toggle-sound').addEventListener('change', e => {
     state.settings.sound = e.target.checked;
@@ -587,11 +585,6 @@ function initSettings() {
   });
   document.getElementById('toggle-vibration').addEventListener('change', e => {
     state.settings.vibration = e.target.checked;
-    saveSettings();
-  });
-  document.getElementById('toggle-theme').addEventListener('change', e => {
-    state.settings.lightMode = e.target.checked;
-    applyTheme(e.target.checked);
     saveSettings();
   });
 }
