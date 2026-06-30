@@ -1,0 +1,29 @@
+# Never cache the service worker, HTML or app.js
+# app.js must never be cached because it contains the version-check
+# logic that fixes stale caches — if app.js itself is stale, it can
+# never run that fix.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
+/app.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
+# Cache everything else for 1 year (content-addressed assets)
+/words/*
+  Cache-Control: public, max-age=31536000
+
+/icons/*
+  Cache-Control: public, max-age=31536000
+
+/*.css
+  Cache-Control: public, max-age=86400
