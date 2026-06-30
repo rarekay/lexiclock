@@ -195,8 +195,6 @@ function goTo(screen, opts = {}) {
   document.getElementById(`nav-${screen}`).classList.add('active');
 
   if (screen === 'timer') {
-    // Timer is part of Play — highlight Play tab
-    document.getElementById('nav-setup').classList.add('active');
     const isEmpty = !state.started;
     document.getElementById('timer-empty').style.display = isEmpty ? 'flex' : 'none';
     document.getElementById('timer-body').style.display = isEmpty ? 'none' : 'flex';
@@ -212,16 +210,6 @@ function goTo(screen, opts = {}) {
     updateTimerUI();
   } else {
     clearInterval(state.interval);
-  }
-
-  if (screen === 'explore') {
-    if (typeof initExplore === 'function' && !explore.wotd) initExplore();
-    else if (typeof renderWotd === 'function') renderWotd();
-  }
-
-  if (screen === 'train') {
-    if (typeof renderTrainHome === 'function') renderTrainHome();
-    showTrainSection('home');
   }
 
   if (screen === 'challenge') {
@@ -543,7 +531,7 @@ async function checkWords() {
   try {
     const dictKey = state.activeDict === 'csw' ? 'csw' : 'nwl';
     const wordSet = await loadWordList(dictKey);
-    const dictLabel = state.activeDict === 'csw' ? 'Collins (CSW)' : 'NWL2023';
+    const dictLabel = state.activeDict === 'csw' ? 'Collins (CSW24)' : 'NWL2023';
 
     const invalid = words.filter(w => !wordSet.has(w));
     const allValid = invalid.length === 0;
@@ -638,7 +626,7 @@ function dismissOnboarding() {
   document.getElementById('onboarding').classList.add('hidden');
 }
 
-const APP_VERSION = 'v3.0';
+const APP_VERSION = 'v1.2';
 
 // ── Update Detection ──────────────────────────────────────────────────────────
 let newWorker = null;
@@ -723,8 +711,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
   initSettings();
   initOnboarding();
-  initExplore();
-  initTrain();
   registerSW();
   updateTimerUI();
   checkInstallPrompt();

@@ -22,8 +22,6 @@ self.addEventListener('activate', e => {
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     )
   );
-  // Claim all clients immediately on activate
-  // This is safe here because we want to force the update through
   self.clients.claim();
 });
 
